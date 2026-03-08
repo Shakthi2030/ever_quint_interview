@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Water Tank Problem</title>
+
+<style>
+
+body{
+font-family:Arial;
+text-align:center;
+margin-top:40px;
+}
+
+input{
+width:300px;
+padding:10px;
+font-size:16px;
+}
+
+button{
+padding:10px 20px;
+font-size:16px;
+margin-left:10px;
+cursor:pointer;
+}
+
+#grid{
+display:grid;
+justify-content:center;
+margin-top:40px;
+gap:2px;
+}
+
+.cell{
+width:30px;
+height:30px;
+border:1px solid #ccc;
+}
+
+.block{
+background:gold;
+}
+
+.water{
+background:#3498db;
+}
+
+</style>
+</head>
+
+<body>
+
+<h2>Water Tank Problem</h2>
+
+<p>Enter block heights separated by commas</p>
+
+<input id="inputArray" value="0,4,0,0,0,6,0,6,4,0">
+
+<button onclick="solve()">Calculate</button>
+
+<h3 id="result"></h3>
+
+<div id="grid"></div>
+
+<script>
+
+function trapWater(height){
+
+let n = height.length;
+
+let leftMax = new Array(n);
+let rightMax = new Array(n);
+
+leftMax[0] = height[0];
+
+for(let i=1;i<n;i++){
+leftMax[i] = Math.max(leftMax[i-1],height[i]);
+}
+
+rightMax[n-1] = height[n-1];
+
+for(let i=n-2;i>=0;i--){
+rightMax[i] = Math.max(rightMax[i+1],height[i]);
+}
+
+let water = 0;
+
+for(let i=0;i<n;i++){
+water += Math.min(leftMax[i],rightMax[i]) - height[i];
+}
+
+return water;
+
+}
+
+function solve(){
+
+let input = document.getElementById("inputArray").value;
+
+let arr = input.split(",").map(Number);
+
+let totalWater = trapWater(arr);
+
+document.getElementById("result").innerText = "Water Stored: " + totalWater + " Units";
+
+drawGrid(arr);
+
+}
+
+function drawGrid(arr){
+
+let maxHeight = Math.max(...arr);
+
+let grid = document.getElementById("grid");
+
+grid.innerHTML="";
+
+grid.style.gridTemplateColumns = "repeat("+arr.length+",30px)";
+
+let n = arr.length;
+
+let leftMax = [];
+let rightMax = [];
+
+leftMax[0] = arr[0];
+
+for(let i=1;i<n;i++)
+leftMax[i] = Math.max(leftMax[i-1],arr[i]);
+
+rightMax[n-1] = arr[n-1];
+
+for(let i=n-2;i>=0;i--)
+rightMax[i] = Math.max(rightMax[i+1],arr[i]);
+
+for(let row=maxHeight;row>=1;row--){
+
+for(let col=0;col<n;col++){
+
+let cell = document.createElement("div");
+
+cell.classList.add("cell");
+
+if(arr[col] >= row){
+
+cell.classList.add("block");
+
+}
+else{
+
+let waterLevel = Math.min(leftMax[col],rightMax[col]);
+
+if(waterLevel >= row)
+cell.classList.add("water");
+
+}
+
+grid.appendChild(cell);
+
+}
+
+}
+
+}
+
+solve();
+
+</script>
+
+</body>
+</html>

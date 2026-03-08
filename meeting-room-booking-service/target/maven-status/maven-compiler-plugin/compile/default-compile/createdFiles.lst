@@ -1,0 +1,9 @@
+com/example/meeting/model/Room.class
+com/example/meeting/service/RoomService.class
+com/example/meeting/repository/RoomRepository.class
+com/example/meeting/MeetingRoomApplication.class
+com/example/meeting/model/Booking.class
+com/example/meeting/repository/BookingRepository.class
+com/example/meeting/service/BookingService.class
+com/example/meeting/controller/BookingController.class
+com/example/meeting/controller/RoomController.class
