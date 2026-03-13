@@ -2,6 +2,7 @@
 package com.example.meeting.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import java.time.LocalDateTime;
 
 @Entity
@@ -12,18 +13,26 @@ public class Booking {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    @NotNull(message = "Room ID is required")
+    @Positive(message = "Room ID must be positive")
     @Column(nullable = false)
     private Long roomId;
     
+    @NotBlank(message = "Booking title is required")
+    @Size(min = 3, max = 200, message = "Title must be between 3 and 200 characters")
     @Column(nullable = false)
     private String title;
     
+    @NotBlank(message = "Organizer email is required")
+    @Email(message = "Invalid email format")
     @Column(nullable = false)
     private String organizerEmail;
     
+    @NotNull(message = "Start time is required")
     @Column(nullable = false)
     private LocalDateTime startTime;
     
+    @NotNull(message = "End time is required")
     @Column(nullable = false)
     private LocalDateTime endTime;
     

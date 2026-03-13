@@ -1,58 +1,52 @@
 public class MaxProfit {
 
+    static int maxProfit;
+    static int bestT, bestP, bestC;
+
     public static void main(String[] args) {
 
         int[] testCases = {7, 8, 13};
 
         for (int n : testCases) {
 
-            int maxProfit = 0;
-            int bestT = 0;
-            int bestP = 0;
-            int bestC = 0;
+            maxProfit = 0;
+            bestT = bestP = bestC = 0;
 
-            for (int t = 0; t <= n / 5; t++) {
-                for (int p = 0; p <= n / 4; p++) {
-                    for (int c = 0; c <= n / 10; c++) {
-
-                        int buildTime = t * 5 + p * 4 + c * 10;
-
-                        if (buildTime <= n) {
-
-                            int profit = 0;
-                            int time = 0;
-
-                            for (int i = 0; i < t; i++) {
-                                time += 5;
-                                profit += (n - time) * 1500;
-                            }
-
-                            for (int i = 0; i < p; i++) {
-                                time += 4;
-                                profit += (n - time) * 1000;
-                            }
-
-                            for (int i = 0; i < c; i++) {
-                                time += 10;
-                                profit += (n - time) * 2000;
-                            }
-
-                            if (profit > maxProfit) {
-                                maxProfit = profit;
-                                bestT = t;
-                                bestP = p;
-                                bestC = c;
-                            }
-                        }
-                    }
-                }
-            }
+            dfs(n, 0, 0, 0, 0, 0);
 
             System.out.println("Input Time Unit: " + n);
             System.out.println("Output Earnings: $" + maxProfit);
             System.out.println("Solution:");
             System.out.println("T: " + bestT + " P: " + bestP + " C: " + bestC);
-            System.out.println("-----------------------------");
+            System.out.println("--------------------------------");
+        }
+    }
+
+    static void dfs(int n, int currentTime, int profit, int t, int p, int c) {
+
+        if (profit > maxProfit) {
+            maxProfit = profit;
+            bestT = t;
+            bestP = p;
+            bestC = c;
+        }
+
+        if (currentTime + 5 <= n) {
+            int completionTime = currentTime + 5;
+            int earn = (n - completionTime) * 1500;
+            dfs(n, completionTime, profit + earn, t + 1, p, c);
+        }
+
+        if (currentTime + 4 <= n) {
+            int completionTime = currentTime + 4;
+            int earn = (n - completionTime) * 1000;
+            dfs(n, completionTime, profit + earn, t, p + 1, c);
+        }
+
+        if (currentTime + 10 <= n) {
+            int completionTime = currentTime + 10;
+            int earn = (n - completionTime) * 2000;
+            dfs(n, completionTime, profit + earn, t, p, c + 1);
         }
     }
 }

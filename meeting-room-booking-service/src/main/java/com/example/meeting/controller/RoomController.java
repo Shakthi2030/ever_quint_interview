@@ -3,6 +3,9 @@ package com.example.meeting.controller;
 
 import com.example.meeting.model.Room;
 import com.example.meeting.service.RoomService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,8 +21,9 @@ public class RoomController {
     }
 
     @PostMapping
-    public Room create(@RequestBody Room room){
-        return service.create(room);
+    public ResponseEntity<Room> create(@Valid @RequestBody Room room) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                             .body(service.create(room));
     }
 
     @GetMapping

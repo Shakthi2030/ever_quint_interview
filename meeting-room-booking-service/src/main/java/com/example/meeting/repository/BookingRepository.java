@@ -1,6 +1,8 @@
 package com.example.meeting.repository;
 
 import com.example.meeting.model.Booking;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,4 +23,13 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findOverlappingBookings(@Param("roomId") Long roomId, 
                                          @Param("startTime") LocalDateTime startTime, 
                                          @Param("endTime") LocalDateTime endTime);
+    
+    @Query("SELECT b FROM Booking b WHERE " +
+           "(:roomId IS NULL OR b.roomId = :roomId) AND " +
+           "(:from IS NULL OR b.startTime >= :from) AND " +
+           "(:to IS NULL OR b.endTime <= :to)")
+    Page<Booking> findBookingsWithFilters(@Param("roomId") Long roomId,
+                                        @Param("from") LocalDateTime from,
+                                        @Param("to") LocalDateTime to,
+                                        Pageable pageable);
 }

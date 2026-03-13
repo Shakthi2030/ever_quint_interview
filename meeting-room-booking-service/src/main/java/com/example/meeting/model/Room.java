@@ -2,6 +2,7 @@
 package com.example.meeting.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import java.util.List;
 
 @Entity
@@ -12,12 +13,18 @@ public class Room {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    @NotBlank(message = "Room name is required")
+    @Size(min = 2, max = 100, message = "Room name must be between 2 and 100 characters")
     @Column(nullable = false, unique = true)
     private String name;
     
+    @Min(value = 1, message = "Capacity must be at least 1")
+    @Max(value = 100, message = "Capacity cannot exceed 100")
     @Column(nullable = false)
     private int capacity;
     
+    @Min(value = 0, message = "Floor cannot be negative")
+    @Max(value = 50, message = "Floor cannot exceed 50")
     @Column(nullable = false)
     private int floor;
     
