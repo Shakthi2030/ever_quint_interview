@@ -1,18 +1,19 @@
 package com.example.meeting.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "idempotency_keys")
+@Table(name = "idempotency_keys", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"idempotency_key", "organizer_email"})
+})
 public class IdempotencyKey {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "idempotency_key", nullable = false, unique = true)
+    @Column(name = "idempotency_key", nullable = false)
     private String key;
 
     @Column(nullable = false)

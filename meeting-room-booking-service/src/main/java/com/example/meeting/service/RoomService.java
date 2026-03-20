@@ -73,9 +73,7 @@ public class RoomService {
             
             long bookedMinutes = 0;
             for (com.example.meeting.model.Booking b : bookings) {
-                LocalDateTime clippedStart = b.getStartTime().isBefore(start) ? start : b.getStartTime();
-                LocalDateTime clippedEnd = b.getEndTime().isAfter(end) ? end : b.getEndTime();
-                bookedMinutes += Duration.between(clippedStart, clippedEnd).toMinutes();
+                bookedMinutes += calculateBookedBusinessMinutes(b, start, end);
             }
             
             double totalBookingHours = Math.round((bookedMinutes / 60.0) * 10.0) / 10.0;
@@ -90,6 +88,47 @@ public class RoomService {
             
             return result;
         }).collect(Collectors.toList());
+    }
+    
+    private long calculateBookedBusinessMinutes(com.example.meeting.model.Booking booking, LocalDateTime queryStart, LocalDateTime queryEnd) {
+        long totalMinutes = 0;
+        
+        // Get the intersection of booking with query range
+        LocalDateTime bookingStart = booking.getStartTime().isBefore(queryStart) ? queryStart : booking.getStartTime();
+        LocalDateTime bookingEnd = booking.getEndTime().isAfter(queryEnd) ? queryEnd : booking.getEndTime();
+        
+        if (bookingStart.isAfter(bookingEnd) || bookingStart.equals(bookingEnd)) {
+            return 0;
+        }
+        
+        // Iterate day by day
+        LocalDate current = bookingStart.toLocalDate();
+        LocalDate endDate = bookingEnd.toLocalDate();
+        
+        while (!current.isAfter(endDate)) {
+            if (current.getDayOfWeek() != DayOfWeek.SATURDAY && 
+                current.getDayOfWeek() != DayOfWeek.SUNDAY) {
+                
+                // Business hours for this day
+                LocalDateTime dayBusinessStart = current.atTime(LocalTime.of(8, 0));
+                LocalDateTime dayBusinessEnd = current.atTime(LocalTime.of(20, 0));
+                
+                // Booking segment for this day
+                LocalDateTime dayBookingStart = current.equals(bookingStart.toLocalDate()) ? bookingStart : dayBusinessStart;
+                LocalDateTime dayBookingEnd = current.equals(bookingEnd.toLocalDate()) ? bookingEnd : dayBusinessEnd;
+                
+                // Intersect booking segment with business hours
+                LocalDateTime intersectStart = dayBookingStart.isBefore(dayBusinessStart) ? dayBusinessStart : dayBookingStart;
+                LocalDateTime intersectEnd = dayBookingEnd.isAfter(dayBusinessEnd) ? dayBusinessEnd : dayBookingEnd;
+                
+                if (intersectStart.isBefore(intersectEnd)) {
+                    totalMinutes += Duration.between(intersectStart, intersectEnd).toMinutes();
+                }
+            }
+            current = current.plusDays(1);
+        }
+        
+        return totalMinutes;
     }
     
     private long countBusinessMinutes(LocalDateTime start, LocalDateTime end) {

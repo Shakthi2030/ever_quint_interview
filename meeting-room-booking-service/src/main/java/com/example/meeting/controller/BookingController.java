@@ -5,7 +5,6 @@ import com.example.meeting.dto.BookingListResponse;
 import com.example.meeting.model.Booking;
 import com.example.meeting.service.BookingService;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

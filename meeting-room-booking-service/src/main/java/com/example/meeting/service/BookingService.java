@@ -21,6 +21,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.Duration;
@@ -91,7 +92,7 @@ public class BookingService {
         LocalTime allowedStart = LocalTime.of(8, 0);
         LocalTime allowedEnd = LocalTime.of(20, 0);
 
-        if (bookingStartTime.isBefore(allowedStart) || bookingStartTime.isAfter(allowedEnd) ||
+        if (bookingStartTime.isBefore(allowedStart) || !bookingStartTime.isBefore(allowedEnd) ||
             bookingEndTime.isBefore(allowedStart) || bookingEndTime.isAfter(allowedEnd)) {
             throw new InvalidBookingTimeException("Bookings are only allowed between 08:00-20:00");
         }
@@ -109,7 +110,7 @@ public class BookingService {
         LocalDateTime fromDate = from != null ? LocalDateTime.parse(from, formatter) : null;
         LocalDateTime toDate = to != null ? LocalDateTime.parse(to, formatter) : null;
         
-        int pageLimit = limit != null ? limit : 50;
+        int pageLimit = limit != null && limit > 0 ? limit : 50;
         int pageOffset = offset != null ? offset : 0;
         Pageable pageable = PageRequest.of(pageOffset / pageLimit, pageLimit);
         
@@ -140,6 +141,7 @@ public class BookingService {
         return bookingRepository.save(booking);
     }
 
+    @Transactional
     public ResponseEntity<Booking> createWithIdempotency(Booking booking, String idempotencyKey) {
         if (idempotencyKey == null || idempotencyKey.trim().isEmpty()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -156,8 +158,8 @@ public class BookingService {
                         .orElseThrow(() -> new BookingNotFoundException("Original booking not found"));
                 return ResponseEntity.status(HttpStatus.OK).body(existingBooking);
             } else if (!key.isCompleted()) {
-                // Request is still in progress
-                return ResponseEntity.status(HttpStatus.CONFLICT).build();
+                // Delete stale in-progress record to allow retry
+                idempotencyKeyRepository.delete(key);
             }
         }
 
@@ -183,19 +185,8 @@ public class BookingService {
             return ResponseEntity.status(HttpStatus.CREATED).body(createdBooking);
             
         } catch (Exception e) {
-            // Update idempotency key with error result
-            try {
-                newKey.setResponseStatus(HttpStatus.BAD_REQUEST.value());
-                newKey.setResponseBody(objectMapper.writeValueAsString(e.getMessage()));
-                newKey.setCompleted(true);
-                idempotencyKeyRepository.save(newKey);
-            } catch (JsonProcessingException ex) {
-                newKey.setResponseStatus(HttpStatus.BAD_REQUEST.value());
-                newKey.setResponseBody("Error processing request");
-                newKey.setCompleted(true);
-                idempotencyKeyRepository.save(newKey);
-                throw new RuntimeException("Failed to serialize booking response", ex);
-            }
+            // Delete the idempotency key to allow retry
+            idempotencyKeyRepository.delete(newKey);
             throw e;
         }
     }

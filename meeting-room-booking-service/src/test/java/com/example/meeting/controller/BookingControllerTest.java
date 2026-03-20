@@ -3,6 +3,8 @@ package com.example.meeting.controller;
 import com.example.meeting.dto.BookingListResponse;
 import com.example.meeting.model.Booking;
 import com.example.meeting.service.BookingService;
+import com.example.meeting.exception.RoomNotFoundException;
+import com.example.meeting.exception.BookingOverlapException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
@@ -10,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
@@ -126,5 +129,110 @@ public class BookingControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(booking)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void testConflictReturns409() throws Exception {
+        Booking booking = new Booking();
+        booking.setRoomId(1L);
+        booking.setTitle("Overlapping Meeting");
+        booking.setOrganizerEmail("test@example.com");
+        booking.setStartTime(LocalDateTime.now().plusDays(1).withHour(10).withMinute(0).withSecond(0));
+        booking.setEndTime(LocalDateTime.now().plusDays(1).withHour(11).withMinute(0).withSecond(0));
+
+        when(bookingService.create(any(Booking.class))).thenThrow(new BookingOverlapException("Room is already booked"));
+
+        mockMvc.perform(post("/bookings")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(booking)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
+    public void testUnknownRoomReturns404() throws Exception {
+        Booking booking = new Booking();
+        booking.setRoomId(999L);
+        booking.setTitle("Meeting in Unknown Room");
+        booking.setOrganizerEmail("test@example.com");
+        booking.setStartTime(LocalDateTime.now().plusDays(1).withHour(10).withMinute(0).withSecond(0));
+        booking.setEndTime(LocalDateTime.now().plusDays(1).withHour(11).withMinute(0).withSecond(0));
+
+        when(bookingService.create(any(Booking.class))).thenThrow(new RoomNotFoundException("Room not found"));
+
+        mockMvc.perform(post("/bookings")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(booking)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
+    public void testIdempotencyKeyReturns200OnRepeat() throws Exception {
+        Booking booking = new Booking();
+        booking.setRoomId(1L);
+        booking.setTitle("Idempotent Meeting");
+        booking.setOrganizerEmail("test@example.com");
+        booking.setStartTime(LocalDateTime.now().plusDays(1).withHour(10).withMinute(0).withSecond(0));
+        booking.setEndTime(LocalDateTime.now().plusDays(1).withHour(11).withMinute(0).withSecond(0));
+        booking.setId(1L);
+
+        when(bookingService.createWithIdempotency(any(Booking.class), any()))
+            .thenReturn(ResponseEntity.ok(booking));
+
+        mockMvc.perform(post("/bookings")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Idempotency-Key", "test-key-123")
+                .content(objectMapper.writeValueAsString(booking)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.title").value("Idempotent Meeting"));
+    }
+
+    @Test
+    public void testAllErrorResponsesIncludeErrorField() throws Exception {
+        // Test 409 Conflict error includes error field
+        Booking overlappingBooking = new Booking();
+        overlappingBooking.setRoomId(1L);
+        overlappingBooking.setTitle("Overlapping Meeting");
+        overlappingBooking.setOrganizerEmail("test@example.com");
+        overlappingBooking.setStartTime(LocalDateTime.now().plusDays(1));
+        overlappingBooking.setEndTime(LocalDateTime.now().plusDays(1).plusHours(1));
+
+        when(bookingService.create(any(Booking.class))).thenThrow(new BookingOverlapException("Room is already booked"));
+
+        mockMvc.perform(post("/bookings")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(overlappingBooking)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").exists());
+
+        // Test 404 Not Found error includes error field
+        Booking unknownRoomBooking = new Booking();
+        unknownRoomBooking.setRoomId(999L);
+        unknownRoomBooking.setTitle("Unknown Room Meeting");
+        unknownRoomBooking.setOrganizerEmail("test@example.com");
+        unknownRoomBooking.setStartTime(LocalDateTime.now().plusDays(1));
+        unknownRoomBooking.setEndTime(LocalDateTime.now().plusDays(1).plusHours(1));
+
+        when(bookingService.create(any(Booking.class))).thenThrow(new RoomNotFoundException("Room not found"));
+
+        mockMvc.perform(post("/bookings")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(unknownRoomBooking)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").exists());
+
+        // Test 400 Bad Request error includes error field
+        Booking invalidBooking = new Booking();
+        invalidBooking.setRoomId(null);
+        invalidBooking.setTitle("");
+        invalidBooking.setOrganizerEmail("invalid-email");
+
+        mockMvc.perform(post("/bookings")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(invalidBooking)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
     }
 }

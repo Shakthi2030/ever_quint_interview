@@ -2,6 +2,7 @@ package com.example.meeting.controller;
 
 import com.example.meeting.model.Room;
 import com.example.meeting.service.RoomService;
+import com.example.meeting.exception.RoomNameAlreadyExistsException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -101,5 +102,57 @@ public class RoomControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(room)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void testDuplicateRoomNameReturns409() throws Exception {
+        Room room = new Room();
+        room.setName("Conference Room");
+        room.setCapacity(10);
+        room.setFloor(1);
+
+        when(roomService.create(any(Room.class))).thenThrow(new RoomNameAlreadyExistsException("Room with name 'Conference Room' already exists"));
+
+        mockMvc.perform(post("/rooms")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(room)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
+    public void testFilterByAmenity() throws Exception {
+        Room room1 = new Room();
+        room1.setName("Room A");
+        room1.setCapacity(5);
+        room1.setFloor(1);
+        room1.setAmenities(Arrays.asList("Projector"));
+
+        Room room2 = new Room();
+        room2.setName("Room B");
+        room2.setCapacity(10);
+        room2.setFloor(2);
+        room2.setAmenities(Arrays.asList("Whiteboard", "Projector"));
+
+        Room room3 = new Room();
+        room3.setName("Room C");
+        room3.setCapacity(8);
+        room3.setFloor(3);
+        room3.setAmenities(Arrays.asList("TV"));
+
+        List<Room> projectorRooms = Arrays.asList(room1, room2);
+
+        when(roomService.list(null, "Projector")).thenReturn(projectorRooms);
+
+        mockMvc.perform(get("/rooms?amenity=Projector"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].name").value("Room A"))
+                .andExpect(jsonPath("$[0].amenities").isArray())
+                .andExpect(jsonPath("$[0].amenities[0]").value("Projector"))
+                .andExpect(jsonPath("$[1].name").value("Room B"))
+                .andExpect(jsonPath("$[1].amenities").isArray())
+                .andExpect(jsonPath("$[1].amenities[1]").value("Projector"));
     }
 }

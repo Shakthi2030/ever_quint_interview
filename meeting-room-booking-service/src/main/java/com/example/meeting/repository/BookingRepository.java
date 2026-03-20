@@ -27,7 +27,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query("SELECT b FROM Booking b WHERE " +
            "(:roomId IS NULL OR b.roomId = :roomId) AND " +
            "(:from IS NULL OR b.startTime >= :from) AND " +
-           "(:to IS NULL OR b.endTime <= :to)")
+           "(:to IS NULL OR b.endTime <= :to) AND " +
+           "b.status != 'cancelled'")
     Page<Booking> findBookingsWithFilters(@Param("roomId") Long roomId,
                                         @Param("from") LocalDateTime from,
                                         @Param("to") LocalDateTime to,
